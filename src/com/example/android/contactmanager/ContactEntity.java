@@ -12,15 +12,15 @@ import com.google.api.client.util.Key;
 public class ContactEntity extends GenericJson {
     @Key("_id")
     private String id;
-    @Key
+    @Key("name")
     private String name;
-    @Key
+    @Key("email")
     private String email;
-    @Key
+    @Key("phone")
     private String phoneNumber;
     // username/email that links to associated user account
-    @Key
-    private String username;
+    @Key("accountName")
+    private String accountName;
     
     // public empty constructor
     public ContactEntity(){}

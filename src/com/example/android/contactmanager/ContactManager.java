@@ -27,17 +27,20 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
-
 import com.kinvey.android.Client;
 import com.kinvey.android.callback.KinveyPingCallback;
+import com.kinvey.android.callback.KinveyUserCallback;
+import com.kinvey.java.User;
 
 public final class ContactManager extends Activity
 {
-
     public static final String TAG = "ContactManager";
+    public static final String CLIENT = "client";
 
     private Button mAddAccountButton;
     private ListView mContactList;
+    
+    private Client mKinveyClient;
 
     /**
      * Called when the activity is first created. Responsible for initializing the UI.
@@ -50,17 +53,13 @@ public final class ContactManager extends Activity
         setContentView(R.layout.contact_manager);
         
         // Kinvey Client
-        final Client mKinveyClient = new Client.Builder(this.getApplicationContext()).build();
+        mKinveyClient = new Client.Builder(this.getApplicationContext()).build();
         
-    	// test Kinvey client credentials
-        mKinveyClient.ping(new KinveyPingCallback() {
-            public void onFailure(Throwable t) {
-                Log.e(TAG, "Kinvey Ping Failed", t);
-            }
-            public void onSuccess(Boolean b) {
-                Log.d(TAG, "Kinvey Ping Success");
-            }
-        });
+        // ping kinvey with client
+    	kinveyPing();
+        
+        // login to kinvey with client
+        kinveyLogin();
 
         // Obtain handles to UI objects
         mAddAccountButton = (Button) findViewById(R.id.addContactButton);
@@ -93,6 +92,38 @@ public final class ContactManager extends Activity
         mContactList.setAdapter(adapter);
     }
 
+    /***
+     * Test Kinvey client credentials
+     */
+    private void kinveyPing() {
+        mKinveyClient.ping(new KinveyPingCallback() {
+        	@Override
+            public void onFailure(Throwable t) {
+                Log.e(TAG, "Kinvey Ping Failed", t);
+            }
+        	@Override
+            public void onSuccess(Boolean b) {
+                Log.d(TAG, "Kinvey Ping Success");
+            }
+        });
+    }
+    
+    /***
+     * Login to kinvey
+     */
+    private void kinveyLogin() {
+        mKinveyClient.user().login(new KinveyUserCallback() {
+            @Override
+            public void onFailure(Throwable error) {
+                Log.e(TAG, "Login Failure", error);
+            }
+            @Override
+            public void onSuccess(User result) {
+                Log.i(TAG,"Logged in a new implicit user with id: " + result.getId());
+            }
+        });
+    }
+    
     /**
      * Obtains the contact list for the currently selected account.
      *
@@ -114,7 +145,7 @@ public final class ContactManager extends Activity
     }
 
     /**
-     * Launches the ContactAdder activity to add a new contact to the selected accont.
+     * Launches the ContactAdder activity to add a new contact to the selected account.
      */
     protected void launchContactAdder() {
         Intent i = new Intent(this, ContactAdder.class);
