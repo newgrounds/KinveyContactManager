@@ -28,6 +28,9 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 
+import com.kinvey.android.Client;
+import com.kinvey.android.callback.KinveyPingCallback;
+
 public final class ContactManager extends Activity
 {
 
@@ -45,6 +48,19 @@ public final class ContactManager extends Activity
         Log.v(TAG, "Activity State: onCreate()");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.contact_manager);
+        
+        // Kinvey Client
+        final Client mKinveyClient = new Client.Builder(this.getApplicationContext()).build();
+        
+    	// test Kinvey client credentials
+        mKinveyClient.ping(new KinveyPingCallback() {
+            public void onFailure(Throwable t) {
+                Log.e(TAG, "Kinvey Ping Failed", t);
+            }
+            public void onSuccess(Boolean b) {
+                Log.d(TAG, "Kinvey Ping Success");
+            }
+        });
 
         // Obtain handles to UI objects
         mAddAccountButton = (Button) findViewById(R.id.addContactButton);
