@@ -22,6 +22,11 @@ public class ContactEntity extends GenericJson {
     @Key("accountName")
     private String accountName;
     
+    @Override
+    public String toString() {
+    	return name;
+    }
+    
     // public empty constructor
     public ContactEntity(){}
 }

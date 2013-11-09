@@ -56,6 +56,7 @@ public final class ContactAdder extends Activity implements OnAccountsUpdateList
     private EditText mContactPhoneEditText;
     private Button mContactSaveButton;
     private AccountData mSelectedAccount;
+    private Client mKinveyClient;
 
     /**
      * Called when the activity is first created. Responsible for initializing the UI.
@@ -67,6 +68,15 @@ public final class ContactAdder extends Activity implements OnAccountsUpdateList
         super.onCreate(savedInstanceState);
         setContentView(R.layout.contact_adder);
 
+        // Kinvey Client
+        mKinveyClient = ContactManager.getClient(this);
+        
+        // ping kinvey with client
+    	ContactManager.kinveyPing(mKinveyClient);
+        
+        // login to kinvey with client
+    	ContactManager.kinveyLogin(mKinveyClient);
+        
         // Obtain handles to UI objects
         mAccountSpinner = (Spinner) findViewById(R.id.accountSpinner);
         mContactNameEditText = (EditText) findViewById(R.id.contactNameEditText);
@@ -107,22 +117,18 @@ public final class ContactAdder extends Activity implements OnAccountsUpdateList
      */
     private void onSaveButtonClicked() {
         Log.v(TAG, "Save button clicked");
-        //createContactEntry();
+        createContactEntry();
         finish();
     }
 
     /**
      * Creates a contact entry from the current UI values in the account named by mSelectedAccount.
      */
-    protected void createContactEntry(Client mKinveyClient) {
+    protected void createContactEntry() {
         // Get values from UI
         String name = mContactNameEditText.getText().toString();
         String phone = mContactPhoneEditText.getText().toString();
         String email = mContactEmailEditText.getText().toString();
-        /*int phoneType = mContactPhoneTypes.get(
-                mContactPhoneTypeSpinner.getSelectedItemPosition());
-        int emailType = mContactEmailTypes.get(
-                mContactEmailTypeSpinner.getSelectedItemPosition());*/
         String accountName = mSelectedAccount.getName();
         
         // create contact
@@ -132,7 +138,7 @@ public final class ContactAdder extends Activity implements OnAccountsUpdateList
         contact.set("phone", phone);
         contact.set("accountName", accountName);
         
-        AsyncAppData<ContactEntity> mycontacts = mKinveyClient.appData("contactsCollection", ContactEntity.class);
+        AsyncAppData<ContactEntity> mycontacts = mKinveyClient.appData(ContactManager.COLLECTION, ContactEntity.class);
         mycontacts.save(contact, new KinveyClientCallback<ContactEntity>() {
 			@Override
 			public void onFailure(Throwable e) {

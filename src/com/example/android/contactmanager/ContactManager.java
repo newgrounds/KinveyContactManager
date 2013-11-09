@@ -17,6 +17,7 @@
 package com.example.android.contactmanager;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -24,10 +25,15 @@ import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.util.Log;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+
+import com.kinvey.android.AsyncAppData;
 import com.kinvey.android.Client;
+import com.kinvey.android.callback.KinveyListCallback;
 import com.kinvey.android.callback.KinveyPingCallback;
 import com.kinvey.android.callback.KinveyUserCallback;
 import com.kinvey.java.User;
@@ -36,11 +42,18 @@ public final class ContactManager extends Activity
 {
     public static final String TAG = "ContactManager";
     public static final String CLIENT = "client";
+    public static final String COLLECTION = "contactsCollection";
 
     private Button mAddAccountButton;
     private ListView mContactList;
     
-    private Client mKinveyClient;
+    private static Client mKinveyClient;
+    public static Client getClient(Context context) {
+    	if (mKinveyClient != null)
+    		return mKinveyClient;
+    	else
+    		return new Client.Builder(context.getApplicationContext()).build();
+    }
 
     /**
      * Called when the activity is first created. Responsible for initializing the UI.
@@ -53,13 +66,13 @@ public final class ContactManager extends Activity
         setContentView(R.layout.contact_manager);
         
         // Kinvey Client
-        mKinveyClient = new Client.Builder(this.getApplicationContext()).build();
+        mKinveyClient = getClient(this);
         
         // ping kinvey with client
-    	kinveyPing();
+    	kinveyPing(mKinveyClient);
         
         // login to kinvey with client
-        kinveyLogin();
+        kinveyLogin(mKinveyClient);
 
         // Obtain handles to UI objects
         mAddAccountButton = (Button) findViewById(R.id.addContactButton);
@@ -82,20 +95,30 @@ public final class ContactManager extends Activity
      * Populate the contact list based on account currently selected in the account spinner.
      */
     private void populateContactList() {
-        // Build adapter with contact entries
-        Cursor cursor = getContacts();
-        String[] fields = new String[] {
-                ContactsContract.Data.DISPLAY_NAME
-        };
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.contact_entry, cursor,
-                fields, new int[] {R.id.contactEntryText});
-        mContactList.setAdapter(adapter);
+    	// get contacts from Kinvey
+    	AsyncAppData<ContactEntity> mycontacts = mKinveyClient.appData(COLLECTION, ContactEntity.class);
+    	mycontacts.get(new KinveyListCallback<ContactEntity>()     {
+			@Override
+			public void onSuccess(ContactEntity[] result) { 
+				Log.v(TAG, "received "+ result.length + " contacts");
+				
+				//ListAdapter adapter = new ListAdapter(this, R.layout.contact_entry);
+		        //SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.contact_entry, cursor,
+		        //        fields, new int[] {R.id.contactEntryText});
+				ArrayAdapter<ContactEntity> adapter = new ArrayAdapter<ContactEntity>(mKinveyClient.getContext(), android.R.layout.simple_list_item_1, result);
+		        mContactList.setAdapter(adapter);
+			}
+			@Override
+			public void onFailure(Throwable error)  { 
+				Log.e(TAG, "failed to fetch all", error);
+			}
+    	});
     }
 
     /***
      * Test Kinvey client credentials
      */
-    private void kinveyPing() {
+    public static void kinveyPing(Client mKinveyClient) {
         mKinveyClient.ping(new KinveyPingCallback() {
         	@Override
             public void onFailure(Throwable t) {
@@ -111,37 +134,21 @@ public final class ContactManager extends Activity
     /***
      * Login to kinvey
      */
-    private void kinveyLogin() {
-        mKinveyClient.user().login(new KinveyUserCallback() {
-            @Override
-            public void onFailure(Throwable error) {
-                Log.e(TAG, "Login Failure", error);
-            }
-            @Override
-            public void onSuccess(User result) {
-                Log.i(TAG,"Logged in a new implicit user with id: " + result.getId());
-            }
-        });
-    }
-    
-    /**
-     * Obtains the contact list for the currently selected account.
-     *
-     * @return A cursor for for accessing the contact list.
-     */
-    private Cursor getContacts()
-    {
-        // Run query
-        Uri uri = ContactsContract.Contacts.CONTENT_URI;
-        String[] projection = new String[] {
-                ContactsContract.Contacts._ID,
-                ContactsContract.Contacts.DISPLAY_NAME
-        };
-        String selection = ContactsContract.Contacts.IN_VISIBLE_GROUP + " = '1'";
-        String[] selectionArgs = null;
-        String sortOrder = ContactsContract.Contacts.DISPLAY_NAME + " COLLATE LOCALIZED ASC";
-
-        return managedQuery(uri, projection, selection, selectionArgs, sortOrder);
+    public static void kinveyLogin(Client mKinveyClient) {
+    	if (!mKinveyClient.user().isUserLoggedIn()) {
+	        mKinveyClient.user().login(new KinveyUserCallback() {
+	            @Override
+	            public void onFailure(Throwable error) {
+	                Log.e(TAG, "Login Failure", error);
+	            }
+	            @Override
+	            public void onSuccess(User result) {
+	                Log.i(TAG,"Logged in a new implicit user with id: " + result.getId());
+	            }
+	        });
+    	} else {
+    		Log.d(TAG, "user is already logged in");
+    	}
     }
 
     /**
